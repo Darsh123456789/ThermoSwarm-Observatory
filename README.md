@@ -1,5 +1,7 @@
 # ThermoSwarm Observatory
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24115049.svg)](https://doi.org/10.5281/zenodo.24115049)
+
 **A public, tamper-evident referee for satellite-drag forecasts, and a daily storm-time
 drag-uncertainty bulletin, built from the orbital decay of about a thousand objects already
 in orbit.**
@@ -154,7 +156,8 @@ Each run verifies the existing chain first and stops if anything was altered.
 
 ## Citation
 
-See [CITATION.cff](CITATION.cff). The underlying method is described in Chaudhary (2026),
+Chaudhary, D. (2026). *ThermoSwarm Observatory* (v0.1.0). Zenodo.
+[doi:10.5281/zenodo.24115049](https://doi.org/10.5281/zenodo.24115049). See [CITATION.cff](CITATION.cff). The underlying method is described in Chaudhary (2026),
 *ThermoSwarm: Altitude-Resolved Storm-Time Thermospheric Density From Multi-Object Orbital
 Decay, With Physics-Informed Drag Forecasting*.
 

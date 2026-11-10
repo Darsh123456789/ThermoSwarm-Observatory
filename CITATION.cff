@@ -8,6 +8,7 @@ authors:
 version: "0.1.0"
 date-released: "2026-11-10"
 license: MIT
+doi: "10.5281/zenodo.24115049"
 repository-code: "https://github.com/Darsh123456789/ThermoSwarm-Observatory"
 keywords:
   - thermospheric density

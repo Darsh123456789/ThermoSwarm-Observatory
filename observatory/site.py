@@ -256,7 +256,7 @@ Intervals come from adaptive conformal prediction, so coverage is measured, not 
 <code>python -m observatory.pipeline --verify</code> to recompute the chain. Submit your own model's forecasts as a JSON file
 in <code>submissions/&lt;team&gt;/YYYY-MM-DD.json</code> before the day's run (see SUBMITTING.md); they are scored with the
 same rules. Machine-readable feed: <a href="{feed}">{feed}</a>.</p>
-<p class="muted">Built on the ThermoSwarm study (code 10.5281/zenodo.23675174; data 10.5281/zenodo.23674144). Element sets
+<p class="muted">Observatory software: 10.5281/zenodo.24115049. Built on the ThermoSwarm study (code 10.5281/zenodo.23675174; data 10.5281/zenodo.23674144). Element sets
 are not redistributed. Not an official product of any agency.</p></div>
 </main></body></html>"""
     (C.DOCS / "index.html").write_text(page)
