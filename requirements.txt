@@ -1,9 +1,11 @@
-numpy>=1.26
-pandas>=2.1
-pyarrow>=14
-scipy>=1.11
-pymsis>=0.10
-sgp4>=2.23
-xgboost>=2.0
-requests>=2.31
-pytest>=8
+# Versions the observatory was tested with (Python 3.13)
+numpy==2.5.3
+pandas==3.0.5
+pyarrow==26.0.0
+scipy==1.18.1
+pymsis==0.13.0
+sgp4==2.27
+xgboost==3.4.1
+scikit-learn==1.9.1
+requests==2.34.2
+pytest==9.2.0
