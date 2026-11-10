@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software or its forecast registry, please cite it as below."
+title: "ThermoSwarm Observatory: a public, hash-chained benchmark and storm-time drag-uncertainty bulletin built from multi-object orbital decay"
+authors:
+  - family-names: Chaudhary
+    given-names: Darsh
+    affiliation: "Pathways School Noida"
+version: "0.1.0"
+date-released: "2026-11-10"
+license: MIT
+repository-code: "https://github.com/Darsh123456789/ThermoSwarm-Observatory"
+keywords:
+  - thermospheric density
+  - satellite drag
+  - space traffic coordination
+  - conformal prediction
+  - collision probability
+  - forecast verification
+references:
+  - type: software
+    title: "ThermoSwarm: analysis code for altitude-resolved storm-time thermospheric density from multi-object orbital decay"
+    authors:
+      - family-names: Chaudhary
+        given-names: Darsh
+    doi: "10.5281/zenodo.23675174"

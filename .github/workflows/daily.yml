@@ -1,0 +1,56 @@
+name: daily-run
+
+on:
+  schedule:
+    - cron: "17 6 * * *"        # 06:17 UTC every day
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Raw element sets are cached between runs but never committed.
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: elements-${{ github.run_id }}
+          restore-keys: elements-
+
+      - name: Verify registry before running
+        run: python -m observatory.pipeline --verify || [ ! -s registry/chain.jsonl ]
+
+      - name: Daily pipeline
+        env:
+          SPACETRACK_USER: ${{ secrets.SPACETRACK_USER }}
+          SPACETRACK_PASS: ${{ secrets.SPACETRACK_PASS }}
+          TRACSS_OMM_URL: ${{ vars.TRACSS_OMM_URL }}
+        run: python -m observatory.pipeline
+
+      - name: Tests
+        run: python -m pytest -q tests
+
+      - name: Commit results
+        run: |
+          git config user.name  "observatory-bot"
+          git config user.email "observatory-bot@users.noreply.github.com"
+          git add store registry docs
+          git diff --cached --quiet && exit 0
+          git commit -m "Daily run $(date -u +%Y-%m-%d)"
+          git push

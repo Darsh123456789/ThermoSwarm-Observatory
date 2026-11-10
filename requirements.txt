@@ -1,0 +1,9 @@
+numpy>=1.26
+pandas>=2.1
+pyarrow>=14
+scipy>=1.11
+pymsis>=0.10
+sgp4>=2.23
+xgboost>=2.0
+requests>=2.31
+pytest>=8
