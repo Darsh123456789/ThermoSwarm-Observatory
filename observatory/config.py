@@ -50,3 +50,20 @@ def band_of(alt_km):
 def band_label(k):
     lo, hi = BANDS[k]
     return f"{lo}-{hi} km"
+
+
+def clean_json(o):
+    """Replace NaN/inf by None so feeds are strict, standard JSON."""
+    import math
+    if isinstance(o, dict):
+        return {k: clean_json(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [clean_json(v) for v in o]
+    if hasattr(o, "item") and not isinstance(o, (str, bytes)):
+        try:
+            o = o.item()
+        except (ValueError, TypeError):
+            pass
+    if isinstance(o, float) and not math.isfinite(o):
+        return None
+    return o

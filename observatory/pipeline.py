@@ -197,7 +197,7 @@ def run(now=None):
     lb = leaderboard(reg.scores()) if len(reg.scores()) else pd.DataFrame()
     status = dict(log=log, committed=committed, registry=reg.verify()[1], bulletin=bulletin,
                   leaderboard=lb.to_dict("records"))
-    (C.DOCS / "feed" / "latest.json").write_text(json.dumps(status, indent=1, default=str))
+    (C.DOCS / "feed" / "latest.json").write_text(json.dumps(C.clean_json(status), indent=1, default=str, allow_nan=False))
     from .site import build
     build()
     return status

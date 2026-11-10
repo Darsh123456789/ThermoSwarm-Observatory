@@ -266,7 +266,7 @@ are not redistributed. Not an official product of any agency.</p></div>
         b = d["bul"].copy()
         b["day"] = b.day.astype(str)
         feed["bulletin"] = b[b.day == b.day.max()].to_dict("records")
-    (C.DOCS / "feed" / f"{d['stream']}.json").write_text(json.dumps(feed, indent=1, default=float))
+    (C.DOCS / "feed" / f"{d['stream']}.json").write_text(json.dumps(C.clean_json(feed), indent=1, default=float, allow_nan=False))
     return C.DOCS / "index.html"
 
 
