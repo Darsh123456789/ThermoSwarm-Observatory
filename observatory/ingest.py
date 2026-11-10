@@ -93,9 +93,12 @@ def fetch_celestrak():
 
 
 def fetch_elements(norads):
-    """Return (provider_name, elements) from the first provider that is configured and works."""
+    """Return (provider_name, elements) from the first provider that is configured and works.
+    On the first run (empty cache) Space-Track is asked for 40 days of history, so objects can
+    be calibrated (30-day quiet-time window) and forecasts start on day one instead of a month later."""
     errors = []
-    for name, fn in (("spacetrack", lambda: fetch_spacetrack(norads)),
+    days = 5 if (C.CACHE / "elements.parquet").exists() else 40
+    for name, fn in (("spacetrack", lambda: fetch_spacetrack(norads, days=days)),
                      ("tracss", fetch_tracss), ("celestrak", fetch_celestrak)):
         try:
             e = fn()
