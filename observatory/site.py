@@ -230,6 +230,7 @@ def build(source="auto"):
                      "data messages are supplied in <code>conjunctions/</code>. Categories use illustrative thresholds "
                      f"(high &ge; {C.PC_HIGH:g}, medium &ge; {C.PC_MEDIUM:g}), not official ones.</p>")
 
+    feed = "feed/latest.json" if d["stream"] == "live" else "feed/backtest.json"
     heat = heatmap_svg(d["bmap"]) if len(d["bmap"]) else ""
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>ThermoSwarm Observatory</title>
@@ -254,7 +255,7 @@ Intervals come from adaptive conformal prediction, so coverage is measured, not 
 <code>registry/chain.jsonl</code> holds the file's SHA-256 and a hash chained to the previous day. Run
 <code>python -m observatory.pipeline --verify</code> to recompute the chain. Submit your own model's forecasts as a JSON file
 in <code>submissions/&lt;team&gt;/YYYY-MM-DD.json</code> before the day's run (see SUBMITTING.md); they are scored with the
-same rules. Machine-readable feed: <a href="feed/latest.json">feed/latest.json</a>.</p>
+same rules. Machine-readable feed: <a href="{feed}">{feed}</a>.</p>
 <p class="muted">Built on the ThermoSwarm study (code 10.5281/zenodo.23675174; data 10.5281/zenodo.23674144). Element sets
 are not redistributed. Not an official product of any agency.</p></div>
 </main></body></html>"""
