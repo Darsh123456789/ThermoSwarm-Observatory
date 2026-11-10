@@ -48,13 +48,24 @@ _GL_R = np.polynomial.legendre.leggauss(64)
 _GL_T = np.polynomial.legendre.leggauss(128)
 
 
+SMALL_DISK = 0.05      # hbr / smallest sigma below which the closed form is used
+
+
 def pc_2d(miss_xy, cov_xy, hbr):
     """Probability that the 2-D Gaussian N(miss_xy, cov_xy) falls inside a disk of radius hbr
-    centred on the origin (all in metres). Gauss-Legendre quadrature in polar coordinates."""
+    centred on the origin (all in metres). Gauss-Legendre quadrature in polar coordinates; when the
+    disk is tiny compared with the uncertainty (hbr < 0.05 sigma_min) and the density changes little
+    across it (hbr |S^-1 m| < 0.1), the usual case for public element sets, the density is constant across it to second order and the closed form
+    pi hbr^2 N(0; miss, cov) is used (relative error < ~0.5%)."""
     mu = np.asarray(miss_xy, float)
     S = np.asarray(cov_xy, float)
     Si = np.linalg.inv(S)
     det = np.linalg.det(S)
+    lam_min = 0.5 * (S[0, 0] + S[1, 1]) - np.sqrt(0.25 * (S[0, 0] - S[1, 1]) ** 2 + S[0, 1] ** 2)
+    g = Si @ mu                                   # gradient of the log-density at the disk centre
+    if lam_min > 0 and hbr < SMALL_DISK * np.sqrt(lam_min) and hbr * np.linalg.norm(g) < 0.1:
+        q = mu @ g
+        return float(hbr ** 2 / (2 * np.sqrt(det)) * np.exp(-0.5 * q))
     xr, wr = _GL_R
     xt, wt = _GL_T
     rr = 0.5 * hbr * (xr + 1)

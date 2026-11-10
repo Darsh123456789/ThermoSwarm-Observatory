@@ -47,6 +47,26 @@ three = pd.DataFrame({"kp": 2.0, "ap": 7.0}, index=idx)
 days = pd.date_range("2025-06-01", "2026-12-31", freq="D")
 daily = pd.DataFrame({"Ap": 7.0, "f107": 140.0, "f107a": 140.0}, index=days)
 
+# Sentinel: the whole-catalogue layer sees the archived objects as the "catalogue" (source None, so
+# nothing is published as map data); screening horizon shortened to keep the test quick
+from observatory import sentinel  # noqa: E402
+ta = pd.read_parquet(tle_path, columns=["norad", "jd", "n", "ecc", "incl", "a_km", "l1", "l2"])
+ta["n"] = ta.n * 1440 / (2 * np.pi)
+ta["perigee_km"] = ta.a_km * (1 - ta.ecc) - C.RE_KM
+ta["apogee_km"] = ta.a_km * (1 + ta.ecc) - C.RE_KM
+_run = sentinel.run
+
+
+def _sentinel(now, *a, **k):
+    jd = pd.Timestamp(now).to_julian_date()
+    h = ta[(ta.jd <= jd) & (ta.jd > jd - 45)]
+    cat = h.sort_values("jd").groupby("norad").tail(1)
+    cat = cat[cat.jd > jd - 3].assign(name="", type="PAYLOAD", rcs="", intl="")
+    k.update(cat=cat, source=None, hist=h, hours=6)
+    return _run(now, *a, **k)
+
+
+sentinel.run = _sentinel
 start = pd.Timestamp("2025-10-25 06:17")
 for k in range(n_days):
     now = start + pd.Timedelta(days=k)
@@ -63,6 +83,8 @@ ok, msg = reg.verify()
 sc = reg.scores()
 print("\nregistry:", msg)
 print("scored pairs:", len(sc), "models:", sorted(sc.model.unique()) if len(sc) else [])
-print("site:", (C.DOCS / "index.html").exists(), "feed:", (C.DOCS / "feed" / "latest.json").exists())
+print("site:", (C.DOCS / "index.html").exists(), "feed:", (C.DOCS / "feed" / "latest.json").exists(),
+      "sentinel:", (C.DOCS / "feed" / "sentinel.json").exists(), st["log"].get("sentinel", {}).get("counts"))
+assert "error" not in (st["log"].get("sentinel") or {}), st["log"].get("sentinel")
 assert ok and len(sc) > 0 and (C.DOCS / "index.html").exists()
 print("E2E OK  root:", tmp)

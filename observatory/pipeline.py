@@ -6,6 +6,7 @@ commit to the registry -> bulletin -> collision impact -> website.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -160,7 +161,7 @@ def run(now=None):
     CONF.write_text(conf.to_json())
 
     # 6) bulletin
-    bulletin = {}
+    bulletin, bt = {}, {}
     if len(state):
         J72 = (win.groupby(win.alt.map(C.band_of)).J.median().to_dict() if len(win) else {})
         fc_b = fc.assign(J=fc.band.map(J72).fillna(0.65))
@@ -193,6 +194,19 @@ def run(now=None):
                                      category_changed=int(res.storm_sensitive.sum()),
                                      riskier=int(res.escalated.sum()),     # higher category inside the drag interval
                                      diluted=int(res.diluted.sum()))       # lower category: too uncertain to reassure
+
+    # 8) Sentinel: whole-catalogue screening, avoidance options and anomaly alerts
+    sentinel_summary = None
+    if os.environ.get("SENTINEL", "1") != "0":
+        try:
+            from .sentinel import run as sentinel_run
+            f = drv.features(now)
+            reg_now = str(regime([f.get("kp_max24", 0)], [f.get("h_since_storm", 240)])[0])
+            snt = sentinel_run(now, drv, bt, ivc, bmap, regime=reg_now)
+            sentinel_summary = dict(counts=snt["counts"], alerts=snt["log"].get("alerts"), log=snt["log"])
+        except Exception as ex:                       # never let Sentinel break the core forecasts
+            sentinel_summary = dict(error=f"{type(ex).__name__}: {ex}"[:500])
+    log["sentinel"] = sentinel_summary
 
     lb = leaderboard(reg.scores()) if len(reg.scores()) else pd.DataFrame()
     status = dict(log=log, committed=committed, registry=reg.verify()[1], bulletin=bulletin,

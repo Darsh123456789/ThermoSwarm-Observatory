@@ -15,7 +15,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -54,3 +54,16 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Daily run $(date -u +%Y-%m-%d)"
           git push
+
+      # The whole-catalogue map file (TraCSS Open Data, CC0) changes completely every day, so it is
+      # published on its own branch that is overwritten daily instead of growing main's history.
+      - name: Publish map catalogue (map-data branch)
+        if: hashFiles('map/catalog.json') != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd map
+          git init -q -b map-data
+          git add catalog.json
+          git -c user.name="observatory-bot" -c user.email="observatory-bot@users.noreply.github.com" commit -qm "Map catalogue $(date -u +%Y-%m-%d)"
+          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" map-data

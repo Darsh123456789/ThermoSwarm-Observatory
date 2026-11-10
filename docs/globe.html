@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThermoSwarm Sentinel — Orbit Map</title>
+<meta name="description" content="Live 3D map of the public space-object catalogue with storm-aware close approaches, avoidance options and anomaly alerts.">
+<style>
+:root{
+  --bg:#05080f;--panel:#0b1220;--panel2:#101a2c;--line:#1d2a42;--text:#dfe7f5;--muted:#8a9ab5;
+  --accent:#5fb3ff;--pay:#62b6ff;--rb:#ffb454;--deb:#ff6b7d;--unk:#9aa6bd;
+  --high:#ff5d6c;--med:#ffb454;--low:#3ecf8e;--earth:#0a1a33;--coast:#2f6aa8;--grid:#14284a;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){--bg:#eef2f8;--panel:#ffffff;--panel2:#f4f7fb;--line:#d8e0ec;--text:#14213a;--muted:#5b6b85;
+    --earth:#cfdcee;--coast:#5a7fb0;--grid:#b9c8de}
+}
+:root[data-theme="light"]{--bg:#eef2f8;--panel:#ffffff;--panel2:#f4f7fb;--line:#d8e0ec;--text:#14213a;--muted:#5b6b85;
+  --earth:#cfdcee;--coast:#5a7fb0;--grid:#b9c8de}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+#app{display:flex;height:100vh;width:100vw;overflow:hidden}
+#view{position:relative;flex:1;min-width:0}
+canvas{display:block}
+#side{width:400px;max-width:100%;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+header{padding:12px 16px;border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;letter-spacing:.02em}
+header .sub{color:var(--muted);font-size:12px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:1px}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;background:none;border:0;color:var(--muted);padding:10px 4px;font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.pane{flex:1;overflow:auto;padding:8px 12px 16px;display:none}
+.pane.on{display:block}
+.item{padding:9px 10px;border:1px solid var(--line);border-radius:8px;margin:7px 0;background:var(--panel2);cursor:pointer}
+.item:hover,.item.sel{border-color:var(--accent)}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.k{color:var(--muted);font-size:12px}
+.cat{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;color:#06101f}
+.cat.high{background:var(--high)}.cat.medium{background:var(--med)}.cat.low{background:var(--low)}
+.mono{font-variant-numeric:tabular-nums}
+#hud{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.card{pointer-events:auto;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:10px;padding:9px 11px;backdrop-filter:blur(6px)}
+#clock{font-size:15px;font-weight:600}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer}
+.ctrl button.on{border-color:var(--accent);color:var(--accent)}
+.legend span{display:inline-flex;align-items:center;gap:5px;margin-right:10px;font-size:12px;cursor:pointer;user-select:none}
+.legend span.off{opacity:.35}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+#info{position:absolute;right:12px;top:12px;max-width:300px;display:none}
+#search{width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font:inherit}
+#msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:420px;text-align:center;display:none}
+.note{color:var(--muted);font-size:12px}
+h3{font-size:13px;margin:14px 0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{padding:3px 4px;border-bottom:1px solid var(--line);text-align:left}
+@media (max-width:820px){
+  #app{flex-direction:column;height:auto;min-height:100vh}
+  #view{height:62vh;flex:none}
+  #side{width:100%;border-left:0;border-top:1px solid var(--line);min-height:50vh}
+  #info{left:12px;right:12px;top:auto;bottom:12px;max-width:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="hud">
+      <div class="card">
+        <div id="clock" class="mono">—</div>
+        <div class="ctrl" style="margin-top:6px">
+          <button data-s="0">❚❚</button><button data-s="1" class="on">1×</button><button data-s="60">60×</button><button data-s="600">600×</button><button id="now">Now</button>
+        </div>
+      </div>
+      <div class="card legend" id="legend">
+        <span data-t="P"><i class="dot" style="background:var(--pay)"></i>Payload <b id="nP" class="mono">0</b></span>
+        <span data-t="R"><i class="dot" style="background:var(--rb)"></i>Rocket body <b id="nR" class="mono">0</b></span>
+        <span data-t="D"><i class="dot" style="background:var(--deb)"></i>Debris <b id="nD" class="mono">0</b></span>
+        <span data-t="U"><i class="dot" style="background:var(--unk)"></i>Other <b id="nU" class="mono">0</b></span>
+      </div>
+    </div>
+    <div id="info" class="card"></div>
+    <div id="msg" class="card"></div>
+  </div>
+  <aside id="side">
+    <header>
+      <h1>ThermoSwarm Sentinel <span class="badge" id="srcbadge">—</span></h1>
+      <div class="sub" id="sub">Loading…</div>
+      <input id="search" placeholder="Find object: NORAD number or name" autocomplete="off">
+    </header>
+    <nav class="tabs"><button class="on" data-p="ev">Close approaches</button><button data-p="al">Alerts</button><button data-p="ab">About</button></nav>
+    <section class="pane on" id="ev"></section>
+    <section class="pane" id="al"></section>
+    <section class="pane" id="ab">
+      <h3>What this shows</h3>
+      <p>Every object in the public catalogue, propagated in your browser with SGP4 from the latest element sets, and the daily results of the ThermoSwarm Sentinel run:</p>
+      <ul>
+        <li><b>Close approaches</b> from an all-against-all screening of the catalogue over 72 hours. Each collision probability (Pc) uses an error model of public element sets calibrated on a year of data, and the storm-drag uncertainty measured that day by the ThermoSwarm sensor network. <i>Pc max</i> is the highest value inside the drag interval; <i>diluted</i> means the orbit is too uncertain for a low Pc to be reassuring.</li>
+        <li><b>Avoidance options</b>: the smallest burn, and when, that brings Pc below 1&nbsp;in&nbsp;a&nbsp;million.</li>
+        <li><b>Alerts</b>: unannounced manoeuvres (storm-aware), break-ups, predicted re-entries with calibrated windows, drag-signature changes and track gaps.</li>
+      </ul>
+      <h3>Limits</h3>
+      <p class="note">Research prototype by an independent student. Not an operational conjunction service, and not affiliated with or endorsed by any agency. Element sets carry no covariance; the Pc values here are estimates, not conjunction data messages. Risk thresholds (high ≥ 1e-4, medium ≥ 1e-6) are illustrative.</p>
+      <h3>Data</h3>
+      <p class="note" id="lic">—</p>
+      <p class="note"><a href="index.html">← Observatory: drag bulletin, bias map and forecast leaderboard</a></p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const SAT_URL = "https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js";
+const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json";
+const S = 1 / 1000;                       // scene units: 1 = 1000 km
+const RE = 6.371;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const $ = id => document.getElementById(id);
+const fmtT = d => d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+const sci = x => x == null ? "–" : x === 0 ? "0" : x < 1e-3 ? x.toExponential(1) : x.toPrecision(2);
+
+// ---------- scene
+const view = $("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
+camera.position.set(18, 10, 18);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.minDistance = 7.2; controls.maxDistance = 150;
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+
+// ECI (x,y,z with z north) -> three (x, z, -y)
+const toV = (x, y, z, v = new THREE.Vector3()) => v.set(x * S, z * S, -y * S);
+const earth = new THREE.Group(); scene.add(earth);
+const globe = new THREE.Mesh(new THREE.SphereGeometry(RE, 64, 48), new THREE.MeshBasicMaterial({ color: css("--earth") }));
+earth.add(globe);
+function sphLines(lines, r, color, opacity) {
+  const pts = [];
+  for (const L of lines) for (let i = 0; i < L.length - 1; i++) {
+    for (const [lon, lat] of [L[i], L[i + 1]]) {
+      const a = lon * Math.PI / 180, b = lat * Math.PI / 180;
+      pts.push(r * Math.cos(b) * Math.cos(a), r * Math.sin(b), -r * Math.cos(b) * Math.sin(a));
+    }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+}
+const grat = [];
+for (let lon = -180; lon < 180; lon += 30) { const L = []; for (let lat = -90; lat <= 90; lat += 3) L.push([lon, lat]); grat.push(L); }
+for (let lat = -60; lat <= 60; lat += 30) { const L = []; for (let lon = -180; lon <= 180; lon += 3) L.push([lon, lat]); grat.push(L); }
+earth.add(sphLines(grat, RE * 1.001, css("--grid"), 0.9));
+fetch(WORLD_URL).then(r => r.json()).then(topo => {
+  const mesh = topojson.mesh(topo, topo.objects.countries);
+  earth.add(sphLines(mesh.coordinates, RE * 1.002, css("--coast"), 0.95));
+}).catch(() => {});
+
+// ---------- data
+let cat = [], types, feed = null, idx = new Map();
+const COLORS = { P: css("--pay"), R: css("--rb"), D: css("--deb"), U: css("--unk") };
+const show = { P: true, R: true, D: true, U: true };
+let points, posAttr, colAttr, base = null, vel = null, baseT = 0;
+let simT = Date.now(), speed = 1, lastFrame = performance.now();
+
+// the catalogue lives on the repository's map-data branch (overwritten daily); a local copy wins if present
+async function loadCatalog() {
+  const owner = location.hostname.endsWith("github.io") ? location.hostname.split(".")[0] : "Darsh123456789";
+  const repo = location.hostname.endsWith("github.io") ? (location.pathname.split("/")[1] || "ThermoSwarm-Observatory") : "ThermoSwarm-Observatory";
+  for (const u of ["catalog/catalog.json", `https://raw.githubusercontent.com/${owner}/${repo}/map-data/catalog.json`]) {
+    try { const r = await fetch(u, { cache: "no-store" }); if (r.ok) return await r.json(); } catch (_) {}
+  }
+  return null;
+}
+async function load() {
+  const [c, f] = await Promise.all([
+    loadCatalog(),
+    fetch("feed/sentinel.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null)]);
+  feed = f;
+  if (c && c.objects && c.objects.length) {
+    cat = c.objects; $("lic").textContent = `Catalogue: ${c.source} (${c.licence}), ${c.n.toLocaleString()} objects, generated ${c.generated.slice(0, 16).replace("T", " ")} UTC.`;
+    $("srcbadge").textContent = c.source === "tracss" ? "TraCSS open data" : c.source;
+  } else {
+    $("msg").style.display = "block";
+    $("msg").innerHTML = "<b>Catalogue map not published yet.</b><br><span class='note'>The map appears after the first daily run that receives TraCSS open data (CC0). Close approaches and alerts are listed on the right when available.</span>";
+    $("srcbadge").textContent = "no catalogue";
+  }
+  cat.forEach((o, k) => idx.set(o[0], k));
+  const counts = { P: 0, R: 0, D: 0, U: 0 }; cat.forEach(o => counts[o[2]] = (counts[o[2]] || 0) + 1);
+  for (const t in counts) $("n" + t).textContent = counts[t].toLocaleString();
+  const n = cat.length;
+  const g = new THREE.BufferGeometry();
+  posAttr = new THREE.BufferAttribute(new Float32Array(n * 3), 3);
+  colAttr = new THREE.BufferAttribute(new Float32Array(n * 3), 3);
+  const col = new THREE.Color();
+  cat.forEach((o, k) => { col.set(COLORS[o[2]] || COLORS.U); colAttr.setXYZ(k, col.r, col.g, col.b); posAttr.setXYZ(k, 0, 0, 0); });
+  g.setAttribute("position", posAttr); g.setAttribute("color", colAttr);
+  points = new THREE.Points(g, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false }));
+  scene.add(points);
+  startWorker();
+  renderPanels();
+  const s = feed ? `Sentinel run ${feed.generated} UTC · ${feed.counts.screened.toLocaleString()} objects screened · ${feed.counts.approaches_5km.toLocaleString()} approaches < 5 km in ${feed.horizon_h} h` : "No Sentinel run published yet.";
+  $("sub").textContent = s;
+}
+
+// ---------- propagation worker (positions + velocities; the main thread extrapolates between updates)
+let worker;
+function startWorker() {
+  if (!cat.length) return;
+  const src = `importScripts("${SAT_URL}");
+  let recs=[];
+  onmessage=e=>{const m=e.data;
+    if(m.init){recs=m.init.map(o=>{try{return satellite.twoline2satrec(o[3],o[4])}catch(_){return null}});return;}
+    const d=new Date(m.t), n=recs.length, p=new Float32Array(n*3), v=new Float32Array(n*3);
+    for(let k=0;k<n;k++){const s=recs[k]; let r=null;
+      if(s){try{r=satellite.propagate(s,d)}catch(_){r=null}}
+      if(r&&r.position&&isFinite(r.position.x)){p[3*k]=r.position.x;p[3*k+1]=r.position.y;p[3*k+2]=r.position.z;v[3*k]=r.velocity.x;v[3*k+1]=r.velocity.y;v[3*k+2]=r.velocity.z;}
+      else{p[3*k]=NaN;}}
+    postMessage({t:m.t,p,v},[p.buffer,v.buffer]);};`;
+  worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+  worker.postMessage({ init: cat });
+  let busy = false;
+  worker.onmessage = e => { base = e.data.p; vel = e.data.v; baseT = e.data.t; busy = false; };
+  setInterval(() => { if (!busy) { busy = true; worker.postMessage({ t: simT }); } }, 400);
+}
+
+// ---------- selection, orbit tracks, events
+const selGroup = new THREE.Group(); scene.add(selGroup);
+let selected = [];
+function clearSel() { while (selGroup.children.length) { const c = selGroup.children.pop(); c.geometry?.dispose(); } selected = []; $("info").style.display = "none"; }
+function track(k, color, t0, mins = 100) {
+  const o = cat[k]; if (!o) return;
+  const s = satellite.twoline2satrec(o[3], o[4]); const pts = [];
+  for (let m = -mins / 2; m <= mins / 2; m += 0.5) {
+    const r = satellite.propagate(s, new Date(t0 + m * 60000));
+    if (r.position) { const v = toV(r.position.x, r.position.y, r.position.z); pts.push(v.x, v.y, v.z); }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+  selGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 })));
+}
+const markGeom = new THREE.SphereGeometry(0.06, 12, 8);
+const marks = [new THREE.Mesh(markGeom, new THREE.MeshBasicMaterial({ color: css("--accent") })),
+               new THREE.Mesh(markGeom, new THREE.MeshBasicMaterial({ color: css("--high") }))];
+marks.forEach(m => { m.visible = false; scene.add(m); });
+function selectObjects(ids, focusT) {
+  clearSel(); marks.forEach(m => m.visible = false);
+  selected = ids.map(i => idx.get(i)).filter(k => k !== undefined);
+  const cols = [css("--accent"), css("--high")];
+  selected.forEach((k, n) => track(k, cols[n % 2], focusT ?? simT));
+  if (ids.length && selected.length === 0) { $("info").style.display = "block"; $("info").innerHTML = `<b>${ids.join(" × ")}</b><div class="note">Not in the published catalogue.</div>`; }
+  else if (selected.length === 1) objInfo(selected[0]);
+}
+function objInfo(k) {
+  const o = cat[k], s = satellite.twoline2satrec(o[3], o[4]);
+  const n = s.no * 1440 / (2 * Math.PI), a = Math.cbrt(398600.4418 / Math.pow(n * 2 * Math.PI / 86400, 2));
+  const age = (Date.now() / 86400000 + 2440587.5) - (s.jdsatepoch + (s.jdsatepochF || 0));
+  const tn = { P: "Payload", R: "Rocket body", D: "Debris", U: "Other / unknown" }[o[2]];
+  $("info").style.display = "block";
+  $("info").innerHTML = `<div class="row"><b>${o[1] || "—"}</b><span class="k">#${o[0]}</span></div><div class="k">${tn}</div>
+  <table class="mono" style="margin-top:6px"><tr><td>Perigee × apogee</td><td>${(a * (1 - s.ecco) - 6378.137).toFixed(0)} × ${(a * (1 + s.ecco) - 6378.137).toFixed(0)} km</td></tr>
+  <tr><td>Inclination</td><td>${(s.inclo * 180 / Math.PI).toFixed(2)}°</td></tr><tr><td>Period</td><td>${(1440 / n).toFixed(1)} min</td></tr>
+  <tr><td>Element-set age</td><td>${age.toFixed(1)} d</td></tr></table>`;
+}
+renderer.domElement.addEventListener("click", ev => {
+  if (!points) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  const m = new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  const ray = new THREE.Raycaster(); ray.params.Points.threshold = 0.06 * camera.position.length() / 25; ray.setFromCamera(m, camera);
+  const hit = ray.intersectObject(points).find(h => show[cat[h.index][2]]);
+  if (hit) { selectObjects([cat[hit.index][0]]); }
+});
+$("search").addEventListener("change", e => {
+  const q = e.target.value.trim().toUpperCase(); if (!q) return;
+  const k = /^\d+$/.test(q) ? idx.get(+q) : cat.findIndex(o => (o[1] || "").toUpperCase().includes(q));
+  if (k !== undefined && k >= 0) selectObjects([cat[k][0]]);
+  else { $("info").style.display = "block"; $("info").innerHTML = "<b>No match</b>"; }
+});
+
+// ---------- panels
+function catBadge(c) { return `<span class="cat ${c}">${c.toUpperCase()}</span>`; }
+function renderPanels() {
+  const ev = $("ev"), al = $("al");
+  if (!feed) { ev.innerHTML = "<p class='note'>No Sentinel run published yet.</p>"; al.innerHTML = ev.innerHTML; return; }
+  const c = feed.counts;
+  ev.innerHTML = `<p class="note">${c.approaches_5km.toLocaleString()} approaches within 5 km in the next ${feed.horizon_h} h; ${c.high} reach <b>high</b> and ${c.medium} <b>medium</b> risk at worst within today's drag interval; ${c.riskier} become riskier and ${c.diluted} are diluted by storm drag. Regime: <b>${feed.regime}</b>.</p>`;
+  const plans = new Map((feed.plans || []).map(p => [`${p.i}-${p.j}-${p.tca}`, p]));
+  (feed.events || []).slice(0, 150).forEach((e, n) => {
+    const d = document.createElement("div"); d.className = "item";
+    const p = plans.get(`${e.i}-${e.j}-${e.tca}`);
+    const rec = p && p.recommended;
+    d.innerHTML = `<div class="row"><b>${e.name_i || e.i} × ${e.name_j || e.j}</b>${catBadge(e.cat_max)}</div>
+      <div class="row k mono"><span>TCA ${e.tca} UTC</span><span>${e.miss_km.toFixed(2)} km · ${e.vrel_kms.toFixed(1)} km/s</span></div>
+      <div class="row k mono"><span>Pc ${sci(e.pc_nominal)} → storm ${sci(e.pc_storm)} · max ${sci(e.pc_max)}</span><span>${e.alt_km.toFixed(0)} km</span></div>
+      ${e.escalated ? `<div class="k" style="color:var(--high)">Riskier inside the drag interval</div>` : ""}${e.diluted ? `<div class="k" style="color:var(--med)">Diluted: too uncertain to reassure</div>` : ""}
+      ${rec ? `<div class="k">Avoidance: ${rec.kind} ${Math.abs(rec.dv_mm_s).toFixed(1)} mm/s ${rec.dv_mm_s > 0 ? "prograde" : "retrograde"}, ${rec.burn_before_tca_h.toFixed(1)} h (${rec.orbits_before} orbits) before TCA → Pc ${sci(rec.pc_after)} (#${p.manoeuvring})</div>` : p && p.note ? `<div class="k">${p.note}</div>` : ""}`;
+    d.onclick = () => {
+      document.querySelectorAll("#ev .item").forEach(x => x.classList.remove("sel")); d.classList.add("sel");
+      const t = Date.parse(e.tca + "Z"); simT = t - 8 * 60000; setSpeed(1);
+      selectObjects([e.i, e.j], t);
+      if (e.r1) { const v = toV(...e.r1); marks[0].position.copy(v); marks[0].visible = true; const w = toV(...e.r2); marks[1].position.copy(w); marks[1].visible = true;
+        controls.target.set(0, 0, 0); camera.position.copy(v.clone().normalize().multiplyScalar(14)); }
+      $("info").style.display = "block";
+      $("info").innerHTML = `<b>${e.name_i || e.i} × ${e.name_j || e.j}</b><div class="k">#${e.i} (${e.type_i || "?"}) × #${e.j} (${e.type_j || "?"})</div>
+      <table class="mono" style="margin-top:6px"><tr><td>TCA</td><td>${e.tca} UTC</td></tr><tr><td>Miss (R / T / N)</td><td>${e.dR_km.toFixed(2)} / ${e.dT_km.toFixed(2)} / ${e.dN_km.toFixed(2)} km</td></tr>
+      <tr><td>Relative speed</td><td>${e.vrel_kms.toFixed(2)} km/s</td></tr><tr><td>Hard-body radius</td><td>${e.hbr_m} m</td></tr>
+      <tr><td>1σ along-track</td><td>${e.sigT1_km.toFixed(2)} / ${e.sigT2_km.toFixed(2)} km</td></tr>
+      <tr><td>Pc nominal / storm / max</td><td>${sci(e.pc_nominal)} / ${sci(e.pc_storm)} / ${sci(e.pc_max)}</td></tr></table>
+      ${p && p.options ? `<h3>Avoidance options (to Pc ≤ ${sci(p.target)})</h3><table class="mono"><tr><th>Burn before TCA</th><th>Type</th><th>Δv</th></tr>${p.options.map(o => `<tr><td>${o.burn_before_tca_h.toFixed(1)} h</td><td>${o.kind}</td><td>${o.dv_mm_s.toFixed(1)} mm/s</td></tr>`).join("")}</table>` : ""}`;
+    };
+    ev.appendChild(d);
+  });
+  const A = feed.alerts || {};
+  const sec = (title, list, fn, empty) => `<h3>${title} (${list ? list.length : 0})</h3>` + (list && list.length ? list.slice(0, 60).map(fn).join("") : `<p class="note">${empty}</p>`);
+  al.innerHTML =
+    sec("Break-ups", A.fragmentations, f => `<div class="item" data-ids="${[f.parent].concat(f.piece_ids || []).slice(0, 30).join(",")}"><div class="row"><b>${f.parent_name || f.parent}</b><span class="cat high">BREAK-UP</span></div><div class="k">${f.pieces} new pieces of launch ${f.launch}${f.t_breakup ? `; estimated ${f.t_breakup} UTC, ejection ≈ ${(f.ejection_ms || 0).toFixed(0)} m/s` : ""}</div></div>`, "None detected.") +
+    sec("Manoeuvres (last 3 days)", A.manoeuvres, m => `<div class="item" data-ids="${m.norad}"><div class="row"><b>${m.name || m.norad}</b><span class="k">${m.kind}</span></div><div class="k mono">${m.t} · Δa ${m.da_km.toFixed(2)} km (expected ${m.expected_km.toFixed(2)})${Math.abs(m.di_deg) > 0.005 ? ` · Δi ${m.di_deg.toFixed(3)}°` : ""}</div></div>`, "None detected.") +
+    sec("Predicted re-entries", A.reentries, r => `<div class="item" data-ids="${r.norad}"><div class="row"><b>${r.name || r.norad}</b><span class="k mono">${r.alt_km.toFixed(0)} km</span></div><div class="k mono">${r.predicted} UTC · 90% window ${r.window_lo ? r.window_lo.slice(5, 16) : "?"} – ${r.window_hi ? r.window_hi.slice(5, 16) : "?"}</div></div>`, "None within 60 days.") +
+    sec("Drag-signature changes", A.drag_changes, d => `<div class="item" data-ids="${d.norad}"><div class="row"><b>#${d.norad}</b><span class="k">×${d.ratio_change.toFixed(2)}</span></div><div class="k">since ${d.since} at ${d.alt.toFixed(0)} km</div></div>`, "None.") +
+    sec("Track gaps (LEO, element set > 3 days old)", A.track_gaps, g => `<div class="item" data-ids="${g.norad}"><div class="row"><b>${g.name || g.norad}</b><span class="k mono">${g.age_days.toFixed(1)} d</span></div></div>`, "None.");
+  al.querySelectorAll(".item").forEach(d => d.onclick = () => { selectObjects(d.dataset.ids.split(",").map(Number)); });
+}
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("on", p.id === b.dataset.p));
+});
+function setSpeed(s) { speed = s; document.querySelectorAll(".ctrl button[data-s]").forEach(b => b.classList.toggle("on", +b.dataset.s === s)); }
+document.querySelectorAll(".ctrl button[data-s]").forEach(b => b.onclick = () => setSpeed(+b.dataset.s));
+$("now").onclick = () => { simT = Date.now(); setSpeed(1); };
+document.querySelectorAll("#legend span").forEach(s => s.onclick = () => { const t = s.dataset.t; show[t] = !show[t]; s.classList.toggle("off", !show[t]); });
+
+// ---------- render loop
+const tmp = new THREE.Vector3();
+function gmst(ms) { return typeof satellite !== "undefined" ? satellite.gstime(new Date(ms)) : 0; }
+function frame(now) {
+  const dt = (now - lastFrame) / 1000; lastFrame = now; simT += dt * 1000 * speed;
+  $("clock").textContent = fmtT(new Date(simT));
+  earth.rotation.y = gmst(simT);
+  if (base && posAttr) {
+    const h = (simT - baseT) / 1000, arr = posAttr.array;
+    for (let k = 0, n = cat.length; k < n; k++) {
+      const x = base[3 * k];
+      if (!isFinite(x) || !show[cat[k][2]]) { arr[3 * k] = 0; arr[3 * k + 1] = 0; arr[3 * k + 2] = 0; continue; }
+      toV(x + vel[3 * k] * h, base[3 * k + 1] + vel[3 * k + 1] * h, base[3 * k + 2] + vel[3 * k + 2] * h, tmp);
+      arr[3 * k] = tmp.x; arr[3 * k + 1] = tmp.y; arr[3 * k + 2] = tmp.z;
+    }
+    posAttr.needsUpdate = true;
+    selected.forEach((k, n) => { if (isFinite(base[3 * k])) { marks[n % 2].visible = true; marks[n % 2].position.set(arr[3 * k], arr[3 * k + 1], arr[3 * k + 2]); } });
+  }
+  controls.update(); renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+load(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

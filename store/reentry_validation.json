@@ -1,0 +1,61 @@
+{
+ "objects": 24,
+ "predictions": 157,
+ "window90_log": [
+  -0.4792483989618697,
+  0.17570729744368446
+ ],
+ "window90_factor": [
+  0.6192486448662397,
+  1.192089080058609
+ ],
+ "out_of_sample_coverage_mean": 0.9034339161097512,
+ "out_of_sample_coverage_range": [
+  0.7407407407407407,
+  0.9875
+ ],
+ "by_lead": [
+  {
+   "lead": 1,
+   "n": 24.0,
+   "median_abs_err_days": 0.45812035772894866,
+   "median_abs_err_pct": 36.953794246227666
+  },
+  {
+   "lead": 2,
+   "n": 22.0,
+   "median_abs_err_days": 0.5840467191317527,
+   "median_abs_err_pct": 26.9352507958994
+  },
+  {
+   "lead": 3,
+   "n": 22.0,
+   "median_abs_err_days": 0.6584829691401577,
+   "median_abs_err_pct": 21.22947550765068
+  },
+  {
+   "lead": 5,
+   "n": 22.0,
+   "median_abs_err_days": 0.5216567705495772,
+   "median_abs_err_pct": 10.150400599336603
+  },
+  {
+   "lead": 7,
+   "n": 22.0,
+   "median_abs_err_days": 0.5240531516548059,
+   "median_abs_err_pct": 7.03485952976744
+  },
+  {
+   "lead": 10,
+   "n": 23.0,
+   "median_abs_err_days": 1.319923060464884,
+   "median_abs_err_pct": 12.551110809375595
+  },
+  {
+   "lead": 14,
+   "n": 22.0,
+   "median_abs_err_days": 1.728726083426297,
+   "median_abs_err_pct": 12.090004569706963
+  }
+ ]
+}

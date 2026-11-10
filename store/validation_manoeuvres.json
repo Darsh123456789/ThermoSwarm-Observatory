@@ -1,0 +1,45 @@
+{
+ "data": {
+  "objects": 1281,
+  "element_sets": 763138,
+  "pairs": 492402,
+  "period": [
+   "2025-10-01",
+   "2026-10-11"
+  ]
+ },
+ "false_alarms": {
+  "swarm-aware": {
+   "total": 681,
+   "storm": 162,
+   "quiet": 519,
+   "per_1000_checks_storm": 2.12,
+   "per_1000_checks_quiet": 1.27
+  },
+  "naive": {
+   "total": 920,
+   "storm": 430,
+   "quiet": 490,
+   "per_1000_checks_storm": 5.62,
+   "per_1000_checks_quiet": 1.2
+  }
+ },
+ "recall": {
+  "+0.2 km": {
+   "swarm-aware": 0.673,
+   "naive": 0.488
+  },
+  "+0.5 km": {
+   "swarm-aware": 0.781,
+   "naive": 0.694
+  },
+  "+1.0 km": {
+   "swarm-aware": 0.845,
+   "naive": 0.798
+  },
+  "-0.5 km": {
+   "swarm-aware": 0.646,
+   "naive": 0.623
+  }
+ }
+}
