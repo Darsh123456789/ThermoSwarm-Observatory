@@ -25,7 +25,7 @@ latest element set. (R = 1 means NRLMSIS is right; R = 1.2 means 20% more air.)
 }
 ```
 
-2. Open a pull request before **06:00 UTC** on that date. Forecasts merged after the day's
+2. Open a pull request before **23:00 UTC** on that date (04:30 IST the next morning). Forecasts merged after the day's
    run are not used.
 3. Objects you leave out are not scored for you. `R_pred` must be positive.
 

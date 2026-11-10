@@ -129,7 +129,7 @@ python -m observatory.site                     # rebuild docs/index.html
    `SPACETRACK_PASS` (a free [Space-Track](https://www.space-track.org) account).
 3. Optional **variable** `TRACSS_OMM_URL`: an OMM JSON endpoint from the public TraCSS API.
    If neither source is available the pipeline falls back to CelesTrak.
-4. **Actions → daily → Run workflow** once to check it; afterwards it runs at 06:17 UTC.
+4. **Actions → daily → Run workflow** once to check it; afterwards it runs daily at 23:30 UTC (05:00 IST).
 
 Each run verifies the existing chain first and stops if anything was altered.
 
