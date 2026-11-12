@@ -1,2 +1,3 @@
 day,screened,approaches_5km,approaches_1km,high,medium,riskier,diluted,alerts_manoeuvres,alerts_fragmentations,alerts_reentries,alerts_drag_changes,alerts_track_gaps,source,seconds
 2026-11-11,29900,331315,20880,174,89562,960,608,0,0,0,0,100,spacetrack,3413
+2026-11-12,29866,324016,21742,167,95117,875,517,0,2,87,0,100,spacetrack,4749
